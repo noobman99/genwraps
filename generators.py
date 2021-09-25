@@ -1,8 +1,7 @@
 
 from copy import deepcopy
 
-from typing import Iterator
-from typing import Generator as gen
+from typing import Iterator, Generator as gen
 
 from collections import deque
 
@@ -99,7 +98,6 @@ class Generator:
             if isinstance(self.args[i], Iterator):
                 self.storage["args"][i] = self.args[i]
                 self.args[i] = Genobject(self.storage["args"][i], expl=True)
-        print(self.storage["args"])
         for i in self.kwargs:
             if isinstance(self.kwargs[i], Iterator):
                 self.storage["kwargs"][i] = self.kwargs[i]
