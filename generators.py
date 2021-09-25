@@ -54,7 +54,7 @@ class Genfunc:
     def preserved_looped_gen(func, *args, **kwargs) -> Iterator:
         """ Constructs a self replnishing generator from the given function and arguments where state of arguements is preserved.
         The arguements (both positional and keyword) should be the way the are passed while calling the function normally.
-        
+
         Also see Genfunc.looped_gen to have a iterator where argument states can be changed during runtime.
          """
         dummy_gen = Genfunc(func, preserve = True)
@@ -158,7 +158,9 @@ class Genobject:
 
     
     def copy(self) -> gen:
-        """ To get a copy of the generator this iterator represents """
+        """ To get a copy of the generator this iterator represents.
+        Note : this returns an exhaustive iterator.
+         """
         obj = deque()
         indx = len(self.deqs)
         self.deqs.append(obj)
