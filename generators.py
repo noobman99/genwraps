@@ -8,11 +8,12 @@ from collections import deque
 
 import logging
 
+
 class Genfunc:
 
     def __init__(self, func, preserve: bool = False) -> None:
         """ Wrapper to generate a replenishable generator instead of an exhaustive generator
-        
+
         Also see Genfunc.preserved to maintain the state of arguments passed into function during call
          """
         self.function = func
@@ -21,17 +22,17 @@ class Genfunc:
     def __call__(self, *args, **kwargs) -> type:
         if self.presv:
             args = list(args)
-            for i,j in enumerate(args):
+            for i, j in enumerate(args):
                 try:
                     args[i] = deepcopy(j)
-                except:
-                    print(0, f"{j} is not picklable")
-                    
+                except TypeError:
+                    pass  # the argument stays as it is
+
             for key, val in kwargs.items():
                 try:
                     kwargs[key] = deepcopy(val)
-                except:
-                    logging.log(0, f"{val} is not picklable")
+                except TypeError:
+                    pass  # the argument stays as it is
         return Generator(self.function, args, kwargs)
 
     @staticmethod
@@ -57,7 +58,7 @@ class Genfunc:
 
         Also see Genfunc.looped_gen to have a iterator where argument states can be changed during runtime.
          """
-        dummy_gen = Genfunc(func, preserve = True)
+        dummy_gen = Genfunc(func, preserve=True)
         return dummy_gen(*args, **kwargs)
 
 
@@ -71,10 +72,8 @@ class Generator:
         self.__store()
         self.genra = self.function(*self.args, **self.kwargs)
 
-
     def __iter__(self):
         return self
-
 
     def __next__(self):
         try:
@@ -84,55 +83,42 @@ class Generator:
             self.genra = self.function(*self.args, **self.kwargs)
             raise StopIteration
 
-
     def __str__(self) -> str:
-        return f"Looped generator object"
-
+        return "Looped generator object"
 
     def __replenish(self) -> None:
         """ Refill the iterator arguments for the generator """
         for i in self.storage["args"]:
             if isinstance(self.storage["args"][i], Iterator):
-                if isinstance(self.storage["args"][i], gen):
-                    self.args[i]._refill()
-                else:
-                    self.args[i] = deepcopy(self.storage["args"][i])
+                self.args[i]._refill()
         for i in self.storage["kwargs"]:
             if isinstance(self.storage["kwargs"][i], Iterator):
-                if isinstance(self.storage["kwargs"][i], gen):
-                    self.kwargs[i]._refill()
-                else:
-                    self.kwargs[i] = deepcopy(self.storage["kwargs"][i])
-        
+                self.kwargs[i]._refill()
 
     def __store(self) -> None:
         """ Store the itertor objects since they get exhausted with usage """
         for i in range(len(self.args)):
             if isinstance(self.args[i], Iterator):
-                if isinstance(self.args[i], gen):
-                    self.storage["args"][i] = self.args[i]
-                    self.args[i] = Genobject(self.storage["args"][i], expl = True)
-                else:
-                    self.storage["args"][i] = deepcopy(self.args[i])
+                self.storage["args"][i] = self.args[i]
+                self.args[i] = Genobject(self.storage["args"][i], expl=True)
+        print(self.storage["args"])
         for i in self.kwargs:
             if isinstance(self.kwargs[i], Iterator):
-                if isinstance(self.kwargs[i], gen):
-                    self.storage["kwargs"][i] = self.kwargs[i]
-                    self.kwargs[i] = Genobject(self.storage["kwargs"][i], expl = True)
-                else:
-                    self.storage["kwargs"][i] = deepcopy(self.kwargs[i])
-
+                self.storage["kwargs"][i] = self.kwargs[i]
+                self.kwargs[i] = Genobject(self.storage["kwargs"][i], expl=True)
 
 
 class Genobject:
 
     def __init__(self, genr, expl: bool = False):
+        """ Avoid using the class initialization
+        Use Genobject.generator instead
+         """
         self.genrtr = genr
         self.deqs = [deque(), deque()]
         self.main = 0  # main generator dequeue index
         self.nglct = []
         self.expl = expl  # explictly changing the state of generator
-
 
     def __next__(self):
         if self.deqs[self.main]:
@@ -151,12 +137,10 @@ class Genobject:
                     self._refill()
                 raise StopIteration
 
-
     def _refill(self) -> None:
         """ refill (pseudo) the iterator by changing the states """
         self.main = self.main ^ 1
 
-    
     def copy(self) -> gen:
         """ To get a copy of the generator this iterator represents.
         Note : this returns an exhaustive iterator.
@@ -184,13 +168,10 @@ class Genobject:
 
         return genr(obj, indx)
 
-
     def __iter__(self):
         return self
 
-
     @staticmethod
     def generator(genr) -> Iterator:
-        """ To get a replenishable iterator from the given generator """
-        return Genobject(genr)
-
+        """ To get a replenishable iterator from the given generator. """
+        return Genobject(genr, False)
