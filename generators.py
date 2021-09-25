@@ -6,16 +6,14 @@ from typing import Generator as gen
 
 from collections import deque
 
-import logging
-
 
 class Genfunc:
+    """ Wrapper to generate a replenishable generator instead of an exhaustive generator
+
+    Also see Genfunc.preserved to maintain the state of arguments passed into function during call
+     """
 
     def __init__(self, func, preserve: bool = False) -> None:
-        """ Wrapper to generate a replenishable generator instead of an exhaustive generator
-
-        Also see Genfunc.preserved to maintain the state of arguments passed into function during call
-         """
         self.function = func
         self.presv = preserve
 
@@ -109,6 +107,7 @@ class Generator:
 
 
 class Genobject:
+    """ A wrap to use a given generator in a replenishable way """
 
     def __init__(self, genr, expl: bool = False):
         """ Avoid using the class initialization
