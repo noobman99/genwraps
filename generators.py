@@ -6,40 +6,57 @@ from typing import Generator as gen
 
 from collections import deque
 
+import logging
+
 class Genfunc:
 
     def __init__(self, func, preserve: bool = False) -> None:
+        """ Wrapper to generate a replenishable generator instead of an exhaustive generator
+        
+        Also see Genfunc.preserved to maintain the state of arguments passed into function during call
+         """
         self.function = func
         self.presv = preserve
 
     def __call__(self, *args, **kwargs) -> type:
         if self.presv:
-            argos = []
-            kgs = {}
-            for i in args:
+            args = list(args)
+            for i,j in enumerate(args):
                 try:
-                    argos.append(deepcopy(i))
+                    args[i] = deepcopy(j)
                 except:
-                    raise TypeError(f"{i} is not picklable")
+                    print(0, f"{j} is not picklable")
+                    
             for key, val in kwargs.items():
                 try:
-                    kgs[key] = deepcopy(val)
+                    kwargs[key] = deepcopy(val)
                 except:
-                    raise TypeError(f"{i} is not picklable")
-            args = argos
-            kwargs = kgs            
+                    logging.log(0, f"{val} is not picklable")
         return Generator(self.function, args, kwargs)
 
     @staticmethod
     def preserved(func):
+        """ Wrapper to get a self replenishing iterator object instead a exhaustive generator.
+        Using preserved will preserve the state of arguments passed into the function during call.
+         """
         return Genfunc(func, True)
 
     @staticmethod
-    def looped_gen(func, *args, **kwargs):
+    def looped_gen(func, *args, **kwargs) -> Iterator:
+        """ Constructs a self replenishing generator from the given function and arguments.
+        The arguements (both positional and keyword) should be the way the are passed while calling the function normally.
+
+        Also see Genfunc.preserved_looped_gen to preserve the state of arguements.
+         """
         return Genfunc(func, args, kwargs)
 
     @staticmethod
-    def preserved_looped_gen(func, *args, **kwargs):
+    def preserved_looped_gen(func, *args, **kwargs) -> Iterator:
+        """ Constructs a self replnishing generator from the given function and arguments where state of arguements is preserved.
+        The arguements (both positional and keyword) should be the way the are passed while calling the function normally.
+        
+        Also see Genfunc.looped_gen to have a iterator where argument states can be changed during runtime.
+         """
         dummy_gen = Genfunc(func, preserve = True)
         return dummy_gen(*args, **kwargs)
 
@@ -51,7 +68,7 @@ class Generator:
         self.args = list(args)
         self.kwargs = kwargs
         self.storage = {"args": {}, "kwargs": {}}
-        self.__store__()
+        self.__store()
         self.genra = self.function(*self.args, **self.kwargs)
 
 
@@ -63,31 +80,33 @@ class Generator:
         try:
             return next(self.genra)
         except StopIteration:
-            self.__replenish__()
+            self.__replenish()
             self.genra = self.function(*self.args, **self.kwargs)
             raise StopIteration
 
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Looped generator object"
 
 
-    def __replenish__(self):
+    def __replenish(self) -> None:
+        """ Refill the iterator arguments for the generator """
         for i in self.storage["args"]:
             if isinstance(self.storage["args"][i], Iterator):
                 if isinstance(self.storage["args"][i], gen):
-                    self.args[i].refill()
+                    self.args[i]._refill()
                 else:
                     self.args[i] = deepcopy(self.storage["args"][i])
         for i in self.storage["kwargs"]:
             if isinstance(self.storage["kwargs"][i], Iterator):
                 if isinstance(self.storage["kwargs"][i], gen):
-                    self.kwargs[i].refill()
+                    self.kwargs[i]._refill()
                 else:
                     self.kwargs[i] = deepcopy(self.storage["kwargs"][i])
         
 
-    def __store__(self):
+    def __store(self) -> None:
+        """ Store the itertor objects since they get exhausted with usage """
         for i in range(len(self.args)):
             if isinstance(self.args[i], Iterator):
                 if isinstance(self.args[i], gen):
@@ -129,15 +148,17 @@ class Genobject:
                 return val
             except StopIteration:
                 if not self.expl:
-                    self.refill()
+                    self._refill()
                 raise StopIteration
 
 
-    def refill(self):
+    def _refill(self) -> None:
+        """ refill (pseudo) the iterator by changing the states """
         self.main = self.main ^ 1
 
     
-    def copy(self):
+    def copy(self) -> gen:
+        """ To get a copy of the generator this iterator represents """
         obj = deque()
         indx = len(self.deqs)
         self.deqs.append(obj)
@@ -167,44 +188,7 @@ class Genobject:
 
 
     @staticmethod
-    def generator(genr):
+    def generator(genr) -> Iterator:
+        """ To get a replenishable iterator from the given generator """
         return Genobject(genr)
 
-
-
-@Genfunc
-def counter(lis, num):
-    k = num
-    for i in lis:
-        yield i
-        if not k:
-            return
-        k -= 1
-
-def cntr(num):
-    for i in range(num):
-        yield i
-
-# b = cntr(10)
-# a = counter(b, 3)
-
-# print(list(a))
-# print(list(a))
-# print(list(a))
-# for i in a:
-#     print(i)
-# print(list(a))
-
-m = counter("hello world hype!", 5)
-print(list(m))
-print(list(m))
-
-# o = cntr(10)
-
-# c = Genobject.generator(o)
-
-# for i in c:
-#     print(i)
-
-# print(list(c))
-# print(list(c))
